@@ -888,6 +888,7 @@
               ><i class="fa-solid fa-microphone"></i> Speaker Language</label
             >
             <select id="language-input" class="form-select">
+              <option value="auto">🌐 Auto-detect (multilingual)</option>
               <option value="zh">🇨🇳 Chinese (zh)</option>
               <option value="zh-TW">🇹🇼 Chinese Traditional (zh-TW)</option>
               <option value="ja">🇯🇵 Japanese (ja)</option>
@@ -1574,7 +1575,7 @@
             messages: [
               {
                 role: "system",
-                content: `You are a professional real-time interpreter. Translate the following text to ${langName}. Reply with ONLY the translated text, no explanations, no quotes.`,
+                content: `You are a professional real-time interpreter for live events. The speaker may switch languages mid-sentence or use multiple languages (code-switching). Translate ALL content to ${langName}, preserving the full meaning. Reply with ONLY the translated text, no explanations, no brackets, no quotes.`,
               },
               { role: "user", content: text },
             ],
@@ -1629,8 +1630,7 @@
 
           // Translate
           try {
-            const translated = await mockTranslate(text, targetLang);
-            // const translated = await callOpenAI(text, targetLang);
+            const translated = await callOpenAI(text, targetLang);
             state.stats.translations++;
             el.translationCount.textContent = state.stats.translations;
             showSubtitle(text, translated, false);
@@ -1708,6 +1708,11 @@
               data.transcript ||
               "";
             const isFinal = data.is_final || data.speech_final || false;
+            // Capture detected language (when auto-detect is enabled)
+            const detectedLang = data.channel?.detected_language || data.detected_language || null;
+            if (detectedLang && state.config.language === 'auto') {
+              el.fromLangCode.textContent = detectedLang;
+            }
             if (transcript) handleTranscript(transcript, isFinal);
           }
         } catch {}
