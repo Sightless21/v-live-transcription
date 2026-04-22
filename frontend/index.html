@@ -1,339 +1,880 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Realtime Translation</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Sarabun:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Live speech-to-text transcription using Deepgram" id="pageDescription">
-  <title id="pageTitle">Live Transcription</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
-    integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
-    crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="./node_modules/@deepgram/styles/dist/deepgram.css" />
-  <script type="module" src="./main.js"></script>
+    <style>
+      :root {
+        --bg-primary: #0a0a0c;
+        --bg-secondary: #111115;
+        --bg-panel: #16161c;
+        --bg-card: #1c1c24;
+        --accent: #00e5a0;
+        --accent-dim: rgba(0, 229, 160, 0.15);
+        --accent-border: rgba(0, 229, 160, 0.3);
+        --text-primary: #f0f0f8;
+        --text-secondary: #8888a0;
+        --text-muted: #44445a;
+        --border: rgba(255, 255, 255, 0.06);
+        --danger: #ff4d6d;
+        --warning: #ffb84d;
 
-  <style>
-    /* Layout & Background */
-    body {
-      background: var(--dg-charcoal, #1a1a1f);
-      margin: 0;
-      padding: 0;
-    }
-
-    /* Column Styling */
-    .dg-column--sidebar-left {
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      background: var(--dg-almost-black, #050506);
-      overflow-y: auto;
-      height: 100%;
-    }
-
-    .dg-column--main {
-      background: var(--dg-background, #0b0b0c);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      position: relative;
-    }
-
-    .dg-column--sidebar-right {
-      border-left: 1px solid rgba(255, 255, 255, 0.1);
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      background: var(--dg-almost-black, #050506);
-      overflow-y: auto;
-      height: 100%;
-    }
-
-    @media (min-width: 768px) {
-      .dg-column--sidebar-right {
-        border-top: none;
+        /* Subtitle settings (overridden by JS) */
+        --sub-font-size: 2.2rem;
+        --sub-color: #ffffff;
+        --sub-orig-color: #a0ffd8;
+        --sub-bg: rgba(0, 0, 0, 0.75);
       }
-    }
 
-    @media (min-width: 1024px) {
-      .dg-column--sidebar-left {
-        border-bottom: none;
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-    }
 
-    /* Configuration Section */
-    .config-section {
-      margin-bottom: 1.5rem;
-    }
-
-    .config-section:last-child {
-      margin-bottom: 0;
-    }
-
-    .dg-form-label {
-      display: block;
-      margin-bottom: 0.5rem;
-    }
-
-    /* Form Inputs */
-    .dg-input,
-    .dg-select {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      background: var(--dg-background, #0b0b0c);
-      border: 2px solid var(--dg-pebble, #4e4e52);
-      border-radius: 0.5rem;
-      color: var(--dg-fog, #edede2);
-      font-family: inherit;
-      font-size: 0.875rem;
-      transition: border-color 0.2s;
-    }
-
-    .dg-input:focus,
-    .dg-select:focus {
-      outline: none;
-      border-color: var(--dg-primary, #13ef95);
-    }
-
-    .dg-input::placeholder {
-      color: var(--dg-muted, #949498);
-    }
-
-    .dg-select {
-      cursor: pointer;
-    }
-
-    /* Main Content Container */
-    .main-content-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      position: relative;
-    }
-
-    /* Transcript Container */
-    .transcript-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .transcript-item {
-      background: var(--dg-almost-black, #050506);
-      border-left: 3px solid var(--dg-primary, #13ef95);
-      padding: 1rem;
-      border-radius: 0.25rem;
-      animation: fadeIn 0.3s ease-in;
-    }
-
-    .transcript-item--interim {
-      opacity: 0.6;
-      border-left-color: var(--dg-muted, #949498);
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
+      body {
+        font-family: "Sarabun", sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
-      to {
-        opacity: 1;
-        transform: translateY(0);
+
+      /* ── HEADER ── */
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 1.5rem;
+        height: 52px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        z-index: 100;
       }
-    }
 
-    .transcript-item__timestamp {
-      font-size: 0.7rem;
-      color: var(--dg-muted, #949498);
-      margin-bottom: 0.5rem;
-    }
-
-    .transcript-item__text {
-      color: var(--dg-text, #fbfbff);
-      line-height: 1.5;
-    }
-
-    /* Empty State */
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: var(--dg-muted, #949498);
-      text-align: center;
-      padding: 2rem;
-    }
-
-    .empty-state__icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-
-    .empty-state__text {
-      font-size: 1rem;
-    }
-
-    /* Connect Overlay */
-    .connect-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--dg-background, #0b0b0c);
-      z-index: 10;
-    }
-
-    .connect-overlay.hidden {
-      display: none;
-    }
-
-    .connect-prompt {
-      text-align: center;
-      max-width: 400px;
-      padding: 2rem;
-    }
-
-    .connect-prompt__icon {
-      font-size: 4rem;
-      color: var(--dg-primary, #13ef95);
-      margin-bottom: 1.5rem;
-    }
-
-    .connect-prompt__title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--dg-text, #fbfbff);
-      margin-bottom: 0.5rem;
-    }
-
-    .connect-prompt__subtitle {
-      font-size: 1rem;
-      color: var(--dg-muted, #949498);
-      margin-bottom: 2rem;
-    }
-
-    /* Disconnect Button Container */
-    .disconnect-container {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      z-index: 20;
-    }
-
-    .disconnect-container.hidden {
-      display: none;
-    }
-
-    /* Status Grid - Match voice-agent layout */
-    .status-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .status-item {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .status-item__label {
-      font-size: 0.7rem;
-      color: var(--dg-muted, #949498);
-      font-weight: 500;
-    }
-
-    .status-item__value {
-      font-size: 0.875rem;
-      color: var(--dg-text, #fbfbff);
-    }
-
-    /* Status Badges */
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
-      font-size: 0.875rem;
-    }
-
-    .status-badge--connected {
-      color: var(--dg-primary, #13ef95);
-    }
-
-    .status-badge--disconnected {
-      color: var(--dg-muted, #949498);
-    }
-
-    .status-indicator {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    .status-indicator--connected {
-      background: var(--dg-primary, #13ef95);
-    }
-
-    .status-indicator--disconnected {
-      background: var(--dg-muted, #949498);
-      animation: none;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
+      .header__logo {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        color: var(--accent);
       }
-      50% {
+
+      .header__logo-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--accent);
+        border-radius: 50%;
+        animation: blink 2s ease-in-out infinite;
+      }
+
+      .header__logo-dot.inactive {
+        background: var(--text-muted);
+        animation: none;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      .header__actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 1rem;
+        border-radius: 6px;
+        border: none;
+        font-family: "Sarabun", sans-serif;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .btn--primary {
+        background: var(--accent);
+        color: #0a0a0c;
+      }
+      .btn--primary:hover {
+        background: #00ffb3;
+      }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+      }
+      .btn--ghost:hover {
+        color: var(--text-primary);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .btn--danger {
+        background: rgba(255, 77, 109, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(255, 77, 109, 0.3);
+      }
+      .btn--danger:hover {
+        background: rgba(255, 77, 109, 0.25);
+      }
+
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* ── MAIN LAYOUT ── */
+      .layout {
+        display: grid;
+        grid-template-columns: 280px 1fr 280px;
+        grid-template-rows: 1fr;
+        height: calc(100vh - 52px);
+        overflow: hidden;
+      }
+
+      /* ── SIDEBAR LEFT ── */
+      .sidebar {
+        background: var(--bg-panel);
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar--right {
+        border-right: none;
+        border-left: 1px solid var(--border);
+      }
+
+      .sidebar__section {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .sidebar__title {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+      }
+
+      .form-group {
+        margin-bottom: 0.875rem;
+      }
+      .form-group:last-child {
+        margin-bottom: 0;
+      }
+
+      .form-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 0.375rem;
+      }
+
+      .form-input,
+      .form-select {
+        width: 100%;
+        padding: 0.55rem 0.75rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-family: "Sarabun", sans-serif;
+        font-size: 0.82rem;
+        transition: border-color 0.15s;
+      }
+
+      .form-input:focus,
+      .form-select:focus {
+        outline: none;
+        border-color: var(--accent-border);
+      }
+
+      .form-select {
+        cursor: pointer;
+      }
+
+      /* ── MAIN AREA ── */
+      .main {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        background: var(--bg-primary);
+      }
+
+      /* ── STAGE (the video-like area) ── */
+      .stage {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            ellipse at 30% 20%,
+            rgba(0, 229, 160, 0.04) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse at 70% 80%,
+            rgba(0, 180, 255, 0.03) 0%,
+            transparent 60%
+          ),
+          var(--bg-primary);
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Connect Overlay */
+      .connect-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-primary);
+        z-index: 20;
+      }
+
+      .connect-overlay.hidden {
+        display: none;
+      }
+
+      .connect-prompt {
+        text-align: center;
+        max-width: 420px;
+      }
+
+      .connect-prompt__icon {
+        font-size: 3.5rem;
+        color: var(--accent);
+        margin-bottom: 1.25rem;
+        opacity: 0.8;
+      }
+
+      .connect-prompt__title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+      }
+
+      .connect-prompt__sub {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      /* ── SUBTITLE DISPLAY ── */
+      .subtitle-area {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 2.5rem 5%;
+        z-index: 10;
+      }
+
+      .subtitle-box {
+        background: var(--sub-bg);
+        backdrop-filter: blur(4px);
+        border-radius: 10px;
+        padding: 1rem 1.5rem;
+        text-align: center;
+        min-height: 4.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        transition: all 0.2s;
+      }
+
+      .subtitle-box.empty {
+        opacity: 0.4;
+        border: 1px dashed var(--text-muted);
+        background: transparent;
+      }
+
+      .subtitle__original {
+        font-size: calc(var(--sub-font-size) * 0.55);
+        color: var(--sub-orig-color);
+        font-weight: 400;
+        line-height: 1.4;
+        letter-spacing: 0.02em;
+        opacity: 0.85;
+        max-width: 900px;
+      }
+
+      .subtitle__original.interim {
         opacity: 0.5;
+        font-style: italic;
       }
-    }
 
-    /* Hidden utility */
-    .hidden {
-      display: none !important;
-    }
-  </style>
-</head>
+      .subtitle__translated {
+        font-size: var(--sub-font-size);
+        color: var(--sub-color);
+        font-weight: 600;
+        line-height: 1.35;
+        letter-spacing: 0.01em;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+        max-width: 900px;
+        transition: font-size 0.3s;
+      }
 
-<body>
-  <!-- Header -->
-  <header class="dg-header">
-    <div class="dg-header__container">
-      <div class="dg-header__logo">
-        <span class="dg-header__logo-text" id="headerTitle">Live Transcription</span>
+      .subtitle__translated.translating {
+        opacity: 0.5;
+        animation: shimmer 1s ease-in-out infinite;
+      }
+
+      @keyframes shimmer {
+        0%,
+        100% {
+          opacity: 0.5;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+
+      .subtitle-empty-hint {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        font-family: "IBM Plex Mono", monospace;
+      }
+
+      /* Speaker indicator */
+      .stage-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+      }
+
+      .live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.7rem;
+        background: rgba(255, 77, 109, 0.15);
+        border: 1px solid rgba(255, 77, 109, 0.4);
+        border-radius: 100px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        color: var(--danger);
+      }
+
+      .live-badge__dot {
+        width: 6px;
+        height: 6px;
+        background: var(--danger);
+        border-radius: 50%;
+        animation: blink 1s ease-in-out infinite;
+      }
+
+      .live-badge.inactive {
+        opacity: 0.3;
+        border-color: var(--text-muted);
+        color: var(--text-muted);
+      }
+
+      .live-badge.inactive .live-badge__dot {
+        background: var(--text-muted);
+        animation: none;
+      }
+
+      .disconnect-btn-wrap {
+        z-index: 30;
+      }
+
+      /* ── LOG PANEL (bottom) ── */
+      .log-panel {
+        height: 220px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        background: var(--bg-secondary);
+      }
+
+      .log-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.6rem 1rem;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .log-panel__title {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .log-count {
+        background: var(--bg-card);
+        border-radius: 100px;
+        padding: 0.1rem 0.45rem;
+        font-size: 0.6rem;
+        color: var(--text-secondary);
+      }
+
+      .log-panel__clear {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        cursor: pointer;
+        font-family: "IBM Plex Mono", monospace;
+      }
+
+      .log-panel__clear:hover {
+        color: var(--danger);
+      }
+
+      .log-entries {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .log-entry {
+        display: grid;
+        grid-template-columns: 68px 1fr 1fr;
+        gap: 0.5rem;
+        padding: 0.5rem 0.625rem;
+        border-radius: 6px;
+        background: var(--bg-card);
+        border-left: 3px solid var(--border);
+        font-size: 0.78rem;
+        line-height: 1.45;
+        animation: slideIn 0.25s ease-out;
+      }
+
+      .log-entry--final {
+        border-left-color: var(--accent);
+      }
+      .log-entry--interim {
+        border-left-color: var(--text-muted);
+        opacity: 0.65;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .log-entry__time {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        padding-top: 2px;
+      }
+
+      .log-entry__original {
+        color: var(--sub-orig-color);
+      }
+      .log-entry__translated {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .log-entry__translated.pending {
+        color: var(--text-muted);
+        font-style: italic;
+      }
+
+      .log-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        font-family: "IBM Plex Mono", monospace;
+        gap: 0.5rem;
+      }
+
+      /* ── STATUS SIDEBAR ── */
+      .status-item {
+        margin-bottom: 0.875rem;
+      }
+
+      .status-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .status-label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+        font-family: "IBM Plex Mono", monospace;
+      }
+
+      .status-value {
+        font-size: 0.82rem;
+        color: var(--text-primary);
+      }
+
+      .status-value--connected {
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: blink 2s ease-in-out infinite;
+      }
+
+      .lang-pair {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        background: var(--bg-card);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+
+      .lang-code {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--accent-dim);
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+      }
+
+      .lang-arrow {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+      }
+
+      /* ── SETTINGS DIALOG ── */
+      .dialog-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+
+      .dialog-overlay.open {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      .dialog {
+        background: var(--bg-panel);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        width: 480px;
+        max-width: 95vw;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+        transform: scale(0.96) translateY(8px);
+        transition: transform 0.2s;
+      }
+
+      .dialog-overlay.open .dialog {
+        transform: scale(1) translateY(0);
+      }
+
+      .dialog__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .dialog__title {
+        font-size: 1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .dialog__title i {
+        color: var(--accent);
+      }
+
+      .dialog__close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        cursor: pointer;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+      }
+
+      .dialog__close:hover {
+        background: var(--bg-card);
+        color: var(--text-primary);
+      }
+
+      .dialog__body {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .dialog__section-title {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+      }
+
+      .dialog__row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.875rem;
+      }
+
+      .preview-box {
+        background: #000;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+        border: 1px solid var(--border);
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .preview-text {
+        font-size: var(--sub-font-size);
+        color: var(--sub-color);
+        font-weight: 600;
+        line-height: 1.4;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+      }
+
+      .dialog__footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+
+      .range-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .range-row input[type="range"] {
+        flex: 1;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+
+      .range-value {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--accent);
+        min-width: 40px;
+        text-align: right;
+      }
+
+      /* Color swatches */
+      .color-row {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        flex-wrap: wrap;
+      }
+
+      .swatch {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition:
+          border-color 0.15s,
+          transform 0.15s;
+      }
+
+      .swatch:hover {
+        transform: scale(1.15);
+      }
+      .swatch.active {
+        border-color: white;
+        transform: scale(1.15);
+      }
+
+      .color-custom {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid var(--border);
+        cursor: pointer;
+        overflow: hidden;
+        padding: 0;
+        background: none;
+      }
+
+      .color-custom input[type="color"] {
+        width: 140%;
+        height: 140%;
+        margin: -20%;
+        border: none;
+        cursor: pointer;
+        opacity: 0;
+        position: absolute;
+      }
+
+      .color-custom {
+        position: relative;
+      }
+
+      /* ── MOCK BADGE ── */
+      .mock-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.5rem;
+        background: rgba(255, 184, 77, 0.12);
+        border: 1px solid rgba(255, 184, 77, 0.35);
+        border-radius: 100px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.6rem;
+        color: var(--warning);
+        letter-spacing: 0.05em;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--text-muted);
+        border-radius: 4px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── HEADER ── -->
+    <header class="header">
+      <div class="header__logo">
+        <span class="header__logo-dot inactive" id="live-dot"></span>
+        <span>LIVE · TRANSLATE</span>
       </div>
-      <nav class="dg-header__nav">
-        <a href="https://github.com/deepgram-starters/node-live-transcription" id="repoLink"
-           class="dg-btn dg-btn--ghost dg-btn--sm" target="_blank">
-          <i class="fa-brands fa-github"></i> GitHub
-        </a>
-      </nav>
-    </div>
-  </header>
+      <div class="header__actions">
+        <span class="mock-badge"
+          ><i class="fa-solid fa-flask-vial"></i> Translation Mock Mode</span
+        >
+        <button class="btn btn--ghost" id="settings-btn">
+          <i class="fa-solid fa-sliders"></i> Subtitle Settings
+        </button>
+      </div>
+    </header>
 
-  <!-- Three-Column Layout -->
-  <div class="dg-columns" style="width: 100%; max-width: 100%; height: calc(100vh - 65px);">
-    <div class="dg-columns__wrapper" style="height: 100%;">
+    <!-- ── MAIN LAYOUT ── -->
+    <div class="layout">
+      <!-- LEFT SIDEBAR: Config -->
+      <aside class="sidebar">
+        <div class="sidebar__section">
+          <div class="sidebar__title">Audio Source</div>
 
-      <!-- Left Sidebar: Configuration -->
-      <aside class="dg-column dg-column--sidebar-left dg-column--lg">
-        <div class="dg-content-box">
-          <h3 class="dg-form-label">Configuration</h3>
-
-          <!-- Model Select -->
-          <div class="config-section">
-            <label class="dg-form-label" for="model-select">
-              <i class="fa-solid fa-brain"></i> Model
-            </label>
-            <select id="model-select" class="dg-select">
+          <div class="form-group">
+            <label class="form-label" for="model-select"
+              ><i class="fa-solid fa-brain"></i> STT Model</label
+            >
+            <select id="model-select" class="form-select">
               <option value="nova-3">nova-3</option>
               <option value="nova-2">nova-2</option>
               <option value="nova">nova</option>
@@ -342,97 +883,1132 @@
             </select>
           </div>
 
-          <!-- Language Input -->
-          <div class="config-section">
-            <label class="dg-form-label" for="language-input">
-              <i class="fa-solid fa-language"></i> Language
-            </label>
-            <input
-              type="text"
-              id="language-input"
-              class="dg-input"
-              value="en"
-              placeholder="en"
-            />
+          <div class="form-group">
+            <label class="form-label" for="language-input"
+              ><i class="fa-solid fa-microphone"></i> Speaker Language</label
+            >
+            <select id="language-input" class="form-select">
+              <option value="zh">🇨🇳 Chinese (zh)</option>
+              <option value="zh-TW">🇹🇼 Chinese Traditional (zh-TW)</option>
+              <option value="ja">🇯🇵 Japanese (ja)</option>
+              <option value="ko">🇰🇷 Korean (ko)</option>
+              <option value="en" selected>🇺🇸 English (en)</option>
+              <option value="es">🇪🇸 Spanish (es)</option>
+              <option value="fr">🇫🇷 French (fr)</option>
+              <option value="de">🇩🇪 German (de)</option>
+              <option value="th">🇹🇭 Thai (th)</option>
+            </select>
           </div>
+        </div>
+
+        <div class="sidebar__section">
+          <div class="sidebar__title">Translation Target</div>
+
+          <div class="form-group">
+            <label class="form-label" for="target-lang"
+              ><i class="fa-solid fa-globe"></i> Display Language</label
+            >
+            <select id="target-lang" class="form-select">
+              <option value="th">🇹🇭 Thai (ภาษาไทย)</option>
+              <option value="en">🇺🇸 English</option>
+              <option value="ja">🇯🇵 Japanese</option>
+              <option value="ko">🇰🇷 Korean</option>
+              <option value="zh">🇨🇳 Chinese</option>
+              <option value="es">🇪🇸 Spanish</option>
+              <option value="fr">🇫🇷 French</option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          class="sidebar__section"
+          style="
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+          "
+        >
+          <button
+            class="btn btn--primary"
+            id="connect-btn"
+            style="width: 100%; justify-content: center"
+          >
+            <i class="fa-solid fa-plug"></i> Connect
+          </button>
+          <button
+            class="btn btn--danger hidden"
+            id="disconnect-btn"
+            style="width: 100%; justify-content: center; margin-top: 0.5rem"
+          >
+            <i class="fa-solid fa-plug-circle-xmark"></i> Disconnect
+          </button>
         </div>
       </aside>
 
-      <!-- Main Content: Transcript Display -->
-      <main class="dg-column dg-column--main">
-        <div class="main-content-container">
+      <!-- MAIN CONTENT -->
+      <main class="main">
+        <!-- Stage / Video-like area -->
+        <div class="stage">
           <!-- Connect Overlay -->
           <div class="connect-overlay" id="connect-overlay">
             <div class="connect-prompt">
               <div class="connect-prompt__icon">
-                <i class="fa-solid fa-microphone"></i>
+                <i class="fa-solid fa-language"></i>
               </div>
-              <h2 class="connect-prompt__title">Live Transcription Ready</h2>
-              <p class="connect-prompt__subtitle">Configure settings and click Connect to start</p>
-              <button type="button" id="connect-btn" class="dg-btn dg-btn--primary dg-btn--lg">
-                <i class="fa-solid fa-plug"></i> Connect
-              </button>
+              <h2 class="connect-prompt__title">Realtime Translation Ready</h2>
+              <p class="connect-prompt__sub">
+                Select speaker language &amp; target language,<br />
+                then click <strong>Connect</strong> to begin live transcription
+                &amp; translation.
+              </p>
             </div>
           </div>
 
-          <!-- Disconnect Button -->
-          <div class="disconnect-container hidden" id="disconnect-container">
-            <button type="button" id="disconnect-btn" class="dg-btn dg-btn--secondary dg-btn--sm">
-              <i class="fa-solid fa-plug-circle-xmark"></i> Disconnect
-            </button>
+          <!-- Stage top bar -->
+          <div class="stage-top">
+            <div class="live-badge inactive" id="live-badge">
+              <span class="live-badge__dot"></span> LIVE
+            </div>
+            <div
+              id="lang-pair-display"
+              style="opacity: 0; transition: opacity 0.3s"
+            >
+              <div class="lang-pair">
+                <span class="lang-code" id="from-lang-code">zh</span>
+                <span class="lang-arrow"
+                  ><i class="fa-solid fa-arrow-right"></i
+                ></span>
+                <span class="lang-code" id="to-lang-code">th</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Transcript Container -->
-          <div class="transcript-container hidden" id="transcript-container">
-            <div class="empty-state" id="empty-state">
-              <div class="empty-state__icon">
-                <i class="fa-solid fa-microphone"></i>
-              </div>
-              <p class="empty-state__text">Waiting for audio...</p>
+          <!-- SUBTITLE AREA -->
+          <div class="subtitle-area">
+            <div class="subtitle-box empty" id="subtitle-box">
+              <span class="subtitle-empty-hint" id="subtitle-hint"
+                >subtitle will appear here...</span
+              >
+              <div class="subtitle__original hidden" id="sub-original"></div>
+              <div
+                class="subtitle__translated hidden"
+                id="sub-translated"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOG PANEL -->
+        <div class="log-panel">
+          <div class="log-panel__header">
+            <div class="log-panel__title">
+              <i class="fa-solid fa-scroll"></i>
+              Transcript Log
+              <span class="log-count" id="log-count">0</span>
+            </div>
+            <button class="log-panel__clear" id="clear-log-btn">
+              <i class="fa-solid fa-trash"></i> clear
+            </button>
+          </div>
+          <div class="log-entries" id="log-entries">
+            <div class="log-empty" id="log-empty">
+              <i
+                class="fa-solid fa-inbox"
+                style="font-size: 1.4rem; opacity: 0.3"
+              ></i>
+              <span>No transcripts yet</span>
             </div>
           </div>
         </div>
       </main>
 
-      <!-- Right Sidebar: Status & Stats -->
-      <aside class="dg-column dg-column--sidebar-right">
-        <div class="dg-content-box">
-          <h3 class="dg-form-label" style="margin-bottom: 1rem;">Status</h3>
-          <div class="status-grid">
-            <div class="status-item">
-              <div class="status-item__label">Connection</div>
-              <div class="status-item__value">
-                <span class="status-badge status-badge--disconnected" id="connection-status">
-                  <span class="status-indicator status-indicator--disconnected"></span>
-                  Disconnected
-                </span>
-              </div>
+      <!-- RIGHT SIDEBAR: Status -->
+      <aside class="sidebar sidebar--right">
+        <div class="sidebar__section">
+          <div class="sidebar__title">Status</div>
+
+          <div class="status-item">
+            <div class="status-label">Connection</div>
+            <div class="status-value" id="connection-status">
+              <span style="color: var(--text-muted)">Disconnected</span>
             </div>
-            <div class="status-item">
-              <div class="status-item__label">Microphone</div>
-              <div class="status-item__value" id="mic-status">Inactive</div>
+          </div>
+
+          <div class="status-item">
+            <div class="status-label">Microphone</div>
+            <div
+              class="status-value"
+              id="mic-status"
+              style="color: var(--text-muted)"
+            >
+              Inactive
             </div>
-            <div class="status-item">
-              <div class="status-item__label">Model</div>
-              <div class="status-item__value" id="current-model">-</div>
-            </div>
-            <div class="status-item">
-              <div class="status-item__label">Language</div>
-              <div class="status-item__value" id="current-language">-</div>
-            </div>
-            <div class="status-item">
-              <div class="status-item__label">Messages Received</div>
-              <div class="status-item__value" id="message-count">0</div>
-            </div>
-            <div class="status-item">
-              <div class="status-item__label">Final Transcripts</div>
-              <div class="status-item__value" id="final-count">0</div>
+          </div>
+
+          <div class="status-item">
+            <div class="status-label">Model</div>
+            <div
+              class="status-value"
+              id="current-model"
+              style="color: var(--text-muted)"
+            >
+              —
             </div>
           </div>
         </div>
+
+        <div class="sidebar__section">
+          <div class="sidebar__title">Statistics</div>
+
+          <div class="status-item">
+            <div class="status-label">Messages Received</div>
+            <div class="status-value" id="message-count">0</div>
+          </div>
+
+          <div class="status-item">
+            <div class="status-label">Final Transcripts</div>
+            <div class="status-value" id="final-count">0</div>
+          </div>
+
+          <div class="status-item">
+            <div class="status-label">Translations</div>
+            <div class="status-value" id="translation-count">0</div>
+          </div>
+        </div>
+
+        <div class="sidebar__section">
+          <div class="sidebar__title">Demo Controls</div>
+          <p
+            style="
+              font-size: 0.72rem;
+              color: var(--text-muted);
+              margin-bottom: 0.75rem;
+              line-height: 1.5;
+            "
+          >
+            Test subtitle display with mock data before connecting real audio.
+          </p>
+          <button
+            class="btn btn--ghost"
+            id="mock-btn"
+            style="width: 100%; justify-content: center; font-size: 0.78rem"
+          >
+            <i class="fa-solid fa-flask-vial"></i> Send Mock Transcript
+          </button>
+          <button
+            class="btn btn--ghost"
+            id="mock-zh-btn"
+            style="
+              width: 100%;
+              justify-content: center;
+              font-size: 0.78rem;
+              margin-top: 0.4rem;
+            "
+          >
+            <i class="fa-solid fa-language"></i> Mock Chinese Speech
+          </button>
+        </div>
       </aside>
     </div>
-  </div>
-</body>
 
+    <!-- ── SETTINGS DIALOG ── -->
+    <div class="dialog-overlay" id="settings-dialog">
+      <div class="dialog">
+        <div class="dialog__header">
+          <div class="dialog__title">
+            <i class="fa-solid fa-sliders"></i> Subtitle Settings
+          </div>
+          <button class="dialog__close" id="dialog-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="dialog__body">
+          <!-- Font Size -->
+          <div>
+            <div class="dialog__section-title">Font Size</div>
+            <div class="range-row">
+              <span style="font-size: 0.75rem; color: var(--text-muted)"
+                >A</span
+              >
+              <input
+                type="range"
+                id="font-size-range"
+                min="1.2"
+                max="4.5"
+                step="0.1"
+                value="2.2"
+              />
+              <span style="font-size: 1.1rem; color: var(--text-muted)">A</span>
+              <span class="range-value" id="font-size-label">2.2rem</span>
+            </div>
+          </div>
+
+          <!-- Translation Text Color -->
+          <div>
+            <div class="dialog__section-title">Translation Text Color</div>
+            <div class="color-row" id="main-color-swatches">
+              <div
+                class="swatch active"
+                data-color="#ffffff"
+                style="background: #ffffff"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#00e5a0"
+                style="background: #00e5a0"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#ffd166"
+                style="background: #ffd166"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#ef476f"
+                style="background: #ef476f"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#a0c4ff"
+                style="background: #a0c4ff"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#ffb347"
+                style="background: #ffb347"
+              ></div>
+              <label class="color-custom" title="Custom color">
+                <input type="color" id="main-color-custom" value="#ffffff" />
+                <i
+                  class="fa-solid fa-eyedropper"
+                  style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 0.7rem;
+                    color: var(--text-secondary);
+                    pointer-events: none;
+                  "
+                ></i>
+              </label>
+            </div>
+          </div>
+
+          <!-- Original Text Color -->
+          <div>
+            <div class="dialog__section-title">Original Text Color</div>
+            <div class="color-row" id="orig-color-swatches">
+              <div
+                class="swatch active"
+                data-color="#a0ffd8"
+                style="background: #a0ffd8"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#ffffff"
+                style="background: #ffffff"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#888899"
+                style="background: #888899"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#ffeb99"
+                style="background: #ffeb99"
+              ></div>
+              <div
+                class="swatch"
+                data-color="#c8b8ff"
+                style="background: #c8b8ff"
+              ></div>
+              <label class="color-custom" title="Custom color">
+                <input type="color" id="orig-color-custom" value="#a0ffd8" />
+                <i
+                  class="fa-solid fa-eyedropper"
+                  style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 0.7rem;
+                    color: var(--text-secondary);
+                    pointer-events: none;
+                  "
+                ></i>
+              </label>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div>
+            <div class="dialog__section-title">Preview</div>
+            <div class="preview-box">
+              <div
+                style="
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0.25rem;
+                  align-items: center;
+                "
+              >
+                <div
+                  style="
+                    font-size: calc(var(--sub-font-size) * 0.55);
+                    color: var(--sub-orig-color);
+                    opacity: 0.85;
+                  "
+                >
+                  这是一个实时翻译演示
+                </div>
+                <div class="preview-text">นี่คือการสาธิตการแปลแบบเรียลไทม์</div>
+              </div>
+            </div>
+          </div>
+
+
+        </div>
+        <div class="dialog__footer">
+          <button class="btn btn--ghost" id="dialog-cancel">Cancel</button>
+          <button class="btn btn--primary" id="dialog-save">
+            <i class="fa-solid fa-check"></i> Apply
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      // ============================================================================
+      // SETTINGS PERSISTENCE
+      // ============================================================================
+
+      const SETTINGS_KEY = "live-translate-settings";
+
+      const defaultSettings = {
+        fontSize: 2.2,
+        mainColor: "#ffffff",
+        origColor: "#a0ffd8",
+      };
+
+      let settings = { ...defaultSettings };
+
+      function loadSettings() {
+        try {
+          const saved = localStorage.getItem(SETTINGS_KEY);
+          if (saved) settings = { ...defaultSettings, ...JSON.parse(saved) };
+        } catch {}
+        applySettings();
+      }
+
+      function applySettings() {
+        document.documentElement.style.setProperty(
+          "--sub-font-size",
+          settings.fontSize + "rem",
+        );
+        document.documentElement.style.setProperty(
+          "--sub-color",
+          settings.mainColor,
+        );
+        document.documentElement.style.setProperty(
+          "--sub-orig-color",
+          settings.origColor,
+        );
+      }
+
+      function saveSettings() {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        applySettings();
+      }
+
+      // ============================================================================
+      // STATE
+      // ============================================================================
+
+      const state = {
+        ws: null,
+        isConnected: false,
+        audioContext: null,
+        mediaStream: null,
+        audioProcessor: null,
+        sessionToken: null,
+        stats: { messages: 0, finals: 0, translations: 0 },
+        config: { model: "nova-3", language: "zh", targetLang: "th" },
+        currentInterimId: null,
+        logEntries: [],
+      };
+
+      // ============================================================================
+      // DOM
+      // ============================================================================
+
+      const el = {
+        connectOverlay: document.getElementById("connect-overlay"),
+        connectBtn: document.getElementById("connect-btn"),
+        disconnectBtn: document.getElementById("disconnect-btn"),
+        liveDot: document.getElementById("live-dot"),
+        liveBadge: document.getElementById("live-badge"),
+        langPairDisplay: document.getElementById("lang-pair-display"),
+        fromLangCode: document.getElementById("from-lang-code"),
+        toLangCode: document.getElementById("to-lang-code"),
+
+        subtitleBox: document.getElementById("subtitle-box"),
+        subtitleHint: document.getElementById("subtitle-hint"),
+        subOriginal: document.getElementById("sub-original"),
+        subTranslated: document.getElementById("sub-translated"),
+
+        logEntries: document.getElementById("log-entries"),
+        logEmpty: document.getElementById("log-empty"),
+        logCount: document.getElementById("log-count"),
+        clearLogBtn: document.getElementById("clear-log-btn"),
+
+        connectionStatus: document.getElementById("connection-status"),
+        micStatus: document.getElementById("mic-status"),
+        currentModel: document.getElementById("current-model"),
+        messageCount: document.getElementById("message-count"),
+        finalCount: document.getElementById("final-count"),
+        translationCount: document.getElementById("translation-count"),
+
+        modelSelect: document.getElementById("model-select"),
+        languageInput: document.getElementById("language-input"),
+        targetLang: document.getElementById("target-lang"),
+
+        mockBtn: document.getElementById("mock-btn"),
+        mockZhBtn: document.getElementById("mock-zh-btn"),
+
+        // Settings Dialog
+        settingsBtn: document.getElementById("settings-btn"),
+        settingsDialog: document.getElementById("settings-dialog"),
+        dialogClose: document.getElementById("dialog-close"),
+        dialogCancel: document.getElementById("dialog-cancel"),
+        dialogSave: document.getElementById("dialog-save"),
+        fontSizeRange: document.getElementById("font-size-range"),
+        fontSizeLabel: document.getElementById("font-size-label"),
+        mainColorCustom: document.getElementById("main-color-custom"),
+        origColorCustom: document.getElementById("orig-color-custom"),
+      };
+
+      // ============================================================================
+      // MOCK TRANSLATION ENGINE
+      // ============================================================================
+
+      const mockTranslations = {
+        "Hello, welcome to our seminar today.": {
+          th: "สวัสดีครับ ยินดีต้อนรับสู่สัมมนาของเราในวันนี้",
+          en: "Hello, welcome to our seminar today.",
+          ja: "こんにちは、本日のセミナーへようこそ。",
+          ko: "안녕하세요, 오늘 세미나에 오신 것을 환영합니다.",
+          zh: "你好，欢迎参加我们今天的研讨会。",
+        },
+        "我们今天讨论的主题是人工智能的未来。": {
+          th: "หัวข้อที่เราจะพูดคุยในวันนี้คืออนาคตของปัญญาประดิษฐ์",
+          en: "The topic we are discussing today is the future of artificial intelligence.",
+          ja: "本日議論するテーマは人工知能の未来です。",
+          ko: "오늘 우리가 논의할 주제는 인공지능의 미래입니다.",
+        },
+        "在过去十年中，AI技术取得了巨大的进步。": {
+          th: "ในช่วงสิบปีที่ผ่านมา เทคโนโลยี AI มีความก้าวหน้าอย่างมหาศาล",
+          en: "In the past decade, AI technology has made tremendous progress.",
+          ja: "過去10年間で、AI技術は大きな進歩を遂げました。",
+          ko: "지난 10년간 AI 기술은 엄청난 발전을 이루었습니다.",
+        },
+        "这项技术将彻底改变我们的生活方式。": {
+          th: "เทคโนโลยีนี้จะเปลี่ยนแปลงวิถีชีวิตของเราอย่างสิ้นเชิง",
+          en: "This technology will completely transform the way we live.",
+          ja: "この技術は私たちの生活スタイルを根本から変えるでしょう。",
+          ko: "이 기술은 우리의 생활 방식을 완전히 바꿀 것입니다.",
+        },
+        "谢谢大家的聆听。": {
+          th: "ขอบคุณทุกคนที่ตั้งใจฟัง",
+          en: "Thank you all for listening.",
+          ja: "ご清聴ありがとうございました。",
+          ko: "들어주셔서 감사합니다.",
+        },
+      };
+
+      const mockEnglishPhrases = [
+        "Hello, welcome to our seminar today.",
+        "Today we will be exploring cutting-edge advancements in technology.",
+        "Our speaker is an expert in the field of artificial intelligence.",
+        "Let me start by introducing the main topics we will cover.",
+        "Feel free to ask questions at the end of the presentation.",
+      ];
+
+      const mockChinesePhrases = [
+        "我们今天讨论的主题是人工智能的未来。",
+        "在过去十年中，AI技术取得了巨大的进步。",
+        "这项技术将彻底改变我们的生活方式。",
+        "谢谢大家的聆听。",
+      ];
+
+      let mockPhraseIndex = 0;
+
+      async function mockTranslate(text, targetLang) {
+        // Check exact match first
+        if (mockTranslations[text] && mockTranslations[text][targetLang]) {
+          return mockTranslations[text][targetLang];
+        }
+
+        // Simulate AI translation with delay
+        await new Promise((r) => setTimeout(r, 350 + Math.random() * 400));
+
+        // Generic mock responses by target lang
+        const genMock = {
+          th: `[แปล] ${text}`,
+          en: `[Translated] ${text}`,
+          ja: `[翻訳] ${text}`,
+          ko: `[번역] ${text}`,
+          zh: `[翻译] ${text}`,
+          es: `[Traducido] ${text}`,
+          fr: `[Traduit] ${text}`,
+        };
+        return genMock[targetLang] || `[${targetLang}] ${text}`;
+      }
+
+      // ============================================================================
+      // SUBTITLE DISPLAY
+      // ============================================================================
+
+      let currentSubId = null;
+      let interimTranslateTimer = null;
+
+      function showSubtitle(original, translated, isInterim = false) {
+        el.subtitleBox.classList.remove("empty");
+        el.subtitleHint.classList.add("hidden");
+        el.subOriginal.classList.remove("hidden");
+        el.subTranslated.classList.remove("hidden");
+
+        el.subOriginal.textContent = original;
+        el.subOriginal.className = `subtitle__original${isInterim ? " interim" : ""}`;
+
+        if (translated) {
+          el.subTranslated.textContent = translated;
+          el.subTranslated.className = "subtitle__translated";
+        } else {
+          el.subTranslated.textContent = "Translating...";
+          el.subTranslated.className = "subtitle__translated translating";
+        }
+      }
+
+      function clearSubtitleAfterDelay(delay = 4000) {
+        setTimeout(() => {
+          el.subtitleBox.classList.add("empty");
+          el.subtitleHint.classList.remove("hidden");
+          el.subOriginal.classList.add("hidden");
+          el.subTranslated.classList.add("hidden");
+        }, delay);
+      }
+
+      // ============================================================================
+      // LOG
+      // ============================================================================
+
+      let logCounter = 0;
+
+      function addLogEntry(original, isFinal, translatedOrPending = null) {
+        const id = ++logCounter;
+        const time = new Date().toLocaleTimeString("th-TH", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        });
+
+        // Remove empty state
+        el.logEmpty.classList.add("hidden");
+
+        const entry = document.createElement("div");
+        entry.className = `log-entry log-entry--${isFinal ? "final" : "interim"}`;
+        entry.id = `log-${id}`;
+
+        entry.innerHTML = `
+    <div class="log-entry__time">${time}</div>
+    <div class="log-entry__original">${escHtml(original)}</div>
+    <div class="log-entry__translated pending" id="log-trans-${id}">
+      ${translatedOrPending || '<i class="fa-solid fa-spinner fa-spin" style="opacity:0.4"></i>'}
+    </div>
+  `;
+
+        el.logEntries.appendChild(entry);
+        el.logEntries.scrollTop = el.logEntries.scrollHeight;
+        el.logCount.textContent =
+          ++state.stats.finals <= 0 ? logCounter : logCounter;
+
+        return id;
+      }
+
+      function updateLogTranslation(id, translated) {
+        const cell = document.getElementById(`log-trans-${id}`);
+        if (cell) {
+          cell.className = "log-entry__translated";
+          cell.textContent = translated;
+        }
+        el.logCount.textContent =
+          document.querySelectorAll(".log-entry").length;
+      }
+
+      function escHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      // ============================================================================
+      // OPENAI TRANSLATION
+      // ============================================================================
+
+      const langNames = {
+        th: "Thai", en: "English", ja: "Japanese", ko: "Korean",
+        zh: "Chinese", es: "Spanish", fr: "French", de: "German",
+      };
+
+      async function callOpenAI(text, targetLang) {
+        const langName = langNames[targetLang] || targetLang;
+        const response = await fetch("api/openai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content: `You are a professional real-time interpreter. Translate the following text to ${langName}. Reply with ONLY the translated text, no explanations, no quotes.`,
+              },
+              { role: "user", content: text },
+            ],
+          }),
+        });
+        if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
+        const data = await response.json();
+        return data.choices[0].message.content.trim();
+      }
+
+      // ============================================================================
+      // TRANSCRIPT HANDLER
+      // ============================================================================
+
+      let interimLogId = null;
+
+      async function handleTranscript(text, isFinal) {
+        state.stats.messages++;
+        el.messageCount.textContent = state.stats.messages;
+
+        if (!text.trim()) return;
+
+        const targetLang = el.targetLang.value;
+
+        if (!isFinal) {
+          // Show interim subtitle immediately, no translation
+          showSubtitle(text, null, true);
+
+          // Update interim log entry (or create)
+          if (interimLogId) {
+            const origEl = document.querySelector(
+              `#log-${interimLogId} .log-entry__original`,
+            );
+            if (origEl) origEl.textContent = text;
+          } else {
+            interimLogId = addLogEntry(text, false, null);
+          }
+        } else {
+          state.stats.finals++;
+          el.finalCount.textContent = state.stats.finals;
+
+          // Remove old interim log entry
+          if (interimLogId) {
+            const old = document.getElementById(`log-${interimLogId}`);
+            if (old) old.remove();
+            interimLogId = null;
+          }
+
+          // Show original immediately, trigger translation
+          showSubtitle(text, null, false);
+          const logId = addLogEntry(text, true, null);
+
+          // Translate
+          try {
+            // const translated = await mockTranslate(text, targetLang);
+            const translated = await callOpenAI(text, targetLang);
+            state.stats.translations++;
+            el.translationCount.textContent = state.stats.translations;
+            showSubtitle(text, translated, false);
+            updateLogTranslation(logId, translated);
+            clearSubtitleAfterDelay(5000);
+          } catch {
+            updateLogTranslation(logId, "⚠️ Translation failed");
+            clearSubtitleAfterDelay(3000);
+          }
+        }
+      }
+
+      // ============================================================================
+      // WEBSOCKET + AUDIO (from original main.js, adapted)
+      // ============================================================================
+
+      async function getSessionToken() {
+        if (state.sessionToken) return state.sessionToken;
+        const response = await fetch("api/session");
+        if (!response.ok) throw new Error(`Session failed: ${response.status}`);
+        const data = await response.json();
+        state.sessionToken = data.token;
+        return state.sessionToken;
+      }
+
+      async function connect() {
+        state.config.model = el.modelSelect.value;
+        state.config.language = el.languageInput.value;
+        state.config.targetLang = el.targetLang.value;
+
+        el.connectBtn.disabled = true;
+        el.connectBtn.innerHTML =
+          '<i class="fa-solid fa-spinner fa-spin"></i> Connecting...';
+
+        try {
+          const token = await getSessionToken();
+          const params = new URLSearchParams({
+            model: state.config.model,
+            language: state.config.language,
+            encoding: "linear16",
+            sample_rate: "16000",
+            channels: "1",
+          });
+          const wsUrl = new URL(
+            `api/live-transcription?${params}`,
+            document.baseURI,
+          );
+          wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
+
+          state.ws = new WebSocket(wsUrl.href, [`access_token.${token}`]);
+          state.ws.binaryType = "arraybuffer";
+          state.ws.onopen = onWsOpen;
+          state.ws.onmessage = onWsMessage;
+          state.ws.onclose = onWsClose;
+          state.ws.onerror = () => updateConnectionUI(false, "Error");
+        } catch (err) {
+          console.error(err);
+          el.connectBtn.disabled = false;
+          el.connectBtn.innerHTML = '<i class="fa-solid fa-plug"></i> Connect';
+          alert("Could not connect. Is the server running?");
+        }
+      }
+
+      function onWsOpen() {
+        state.isConnected = true;
+        onConnected();
+      }
+
+      function onWsMessage(event) {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "Results" || data.channel) {
+            const transcript =
+              data.channel?.alternatives?.[0]?.transcript ||
+              data.transcript ||
+              "";
+            const isFinal = data.is_final || data.speech_final || false;
+            if (transcript) handleTranscript(transcript, isFinal);
+          }
+        } catch {}
+      }
+
+      function onWsClose(event) {
+        state.isConnected = false;
+        if (event.code === 4401) {
+          state.sessionToken = null;
+        }
+        onDisconnected();
+      }
+
+      async function onConnected() {
+        el.fromLangCode.textContent = state.config.language;
+        el.toLangCode.textContent = state.config.targetLang;
+        el.currentModel.textContent = state.config.model;
+
+        el.connectOverlay.classList.add("hidden");
+        el.disconnectBtn.classList.remove("hidden");
+        el.connectBtn.classList.add("hidden");
+        el.liveDot.classList.remove("inactive");
+        el.liveBadge.classList.remove("inactive");
+        el.langPairDisplay.style.opacity = "1";
+
+        updateConnectionUI(true, "Connected");
+        el.modelSelect.disabled = true;
+        el.languageInput.disabled = true;
+        el.targetLang.disabled = true;
+
+        try {
+          await initAudio();
+          el.micStatus.textContent = "Active";
+          el.micStatus.style.color = "var(--accent)";
+        } catch {
+          alert(
+            "Microphone access denied. Please allow microphone and reconnect.",
+          );
+          disconnect();
+        }
+      }
+
+      function onDisconnected() {
+        stopAudio();
+        el.disconnectBtn.classList.add("hidden");
+        el.connectBtn.classList.remove("hidden");
+        el.connectBtn.disabled = false;
+        el.connectBtn.innerHTML = '<i class="fa-solid fa-plug"></i> Connect';
+        el.connectOverlay.classList.remove("hidden");
+        el.liveDot.classList.add("inactive");
+        el.liveBadge.classList.add("inactive");
+        el.langPairDisplay.style.opacity = "0";
+        el.modelSelect.disabled = false;
+        el.languageInput.disabled = false;
+        el.targetLang.disabled = false;
+        el.currentModel.textContent = "—";
+        el.micStatus.textContent = "Inactive";
+        el.micStatus.style.color = "";
+        updateConnectionUI(false, "Disconnected");
+      }
+
+      function disconnect() {
+        if (state.ws) {
+          state.ws.close(1000, "User disconnected");
+          state.ws = null;
+        }
+        state.isConnected = false;
+        onDisconnected();
+      }
+
+      function updateConnectionUI(connected, text) {
+        el.connectionStatus.innerHTML = connected
+          ? `<span class="status-value--connected"><span class="status-dot"></span>${text}</span>`
+          : `<span style="color:var(--text-muted)">${text}</span>`;
+      }
+
+      // ── Audio ──
+      async function initAudio() {
+        state.audioContext = new (
+          window.AudioContext || window.webkitAudioContext
+        )({ sampleRate: 16000 });
+        if (state.audioContext.state === "suspended")
+          await state.audioContext.resume();
+
+        state.mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
+
+        const source = state.audioContext.createMediaStreamSource(
+          state.mediaStream,
+        );
+        state.audioProcessor = state.audioContext.createScriptProcessor(
+          4096,
+          1,
+          1,
+        );
+
+        state.audioProcessor.onaudioprocess = (e) => {
+          if (
+            !state.isConnected ||
+            !state.ws ||
+            state.ws.readyState !== WebSocket.OPEN
+          )
+            return;
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcm16 = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          }
+          try {
+            state.ws.send(pcm16.buffer);
+          } catch {}
+        };
+
+        source.connect(state.audioProcessor);
+        state.audioProcessor.connect(state.audioContext.destination);
+      }
+
+      function stopAudio() {
+        if (state.audioProcessor) {
+          state.audioProcessor.disconnect();
+          state.audioProcessor = null;
+        }
+        if (state.mediaStream) {
+          state.mediaStream.getTracks().forEach((t) => t.stop());
+          state.mediaStream = null;
+        }
+        if (state.audioContext) {
+          state.audioContext.close();
+          state.audioContext = null;
+        }
+      }
+
+      // ============================================================================
+      // MOCK DEMO CONTROLS
+      // ============================================================================
+
+      let mockEnIdx = 0;
+      let mockZhIdx = 0;
+
+      el.mockBtn.addEventListener("click", async () => {
+        const phrase =
+          mockEnglishPhrases[mockEnIdx % mockEnglishPhrases.length];
+        mockEnIdx++;
+
+        // Simulate interim → final
+        await handleTranscript(
+          phrase.slice(0, Math.floor(phrase.length * 0.6)) + "...",
+          false,
+        );
+        setTimeout(async () => {
+          await handleTranscript(phrase, true);
+        }, 800);
+      });
+
+      el.mockZhBtn.addEventListener("click", async () => {
+        const phrase =
+          mockChinesePhrases[mockZhIdx % mockChinesePhrases.length];
+        mockZhIdx++;
+
+        await handleTranscript(
+          phrase.slice(0, Math.floor(phrase.length * 0.5)),
+          false,
+        );
+        setTimeout(async () => {
+          await handleTranscript(phrase, true);
+        }, 600);
+      });
+
+      el.clearLogBtn.addEventListener("click", () => {
+        el.logEntries.innerHTML = "";
+        el.logEntries.appendChild(el.logEmpty);
+        el.logEmpty.classList.remove("hidden");
+        el.logCount.textContent = "0";
+        logCounter = 0;
+        interimLogId = null;
+      });
+
+      // ============================================================================
+      // CONNECT / DISCONNECT BUTTONS
+      // ============================================================================
+
+      el.connectBtn.addEventListener("click", connect);
+      el.disconnectBtn.addEventListener("click", disconnect);
+
+      // ============================================================================
+      // SETTINGS DIALOG
+      // ============================================================================
+
+      let pendingSettings = { ...defaultSettings };
+
+      function openSettingsDialog() {
+        pendingSettings = { ...settings };
+        el.fontSizeRange.value = settings.fontSize;
+        el.fontSizeLabel.textContent = settings.fontSize + "rem";
+        el.mainColorCustom.value = settings.mainColor;
+        el.origColorCustom.value = settings.origColor;
+        updateSwatchesActive("main-color-swatches", settings.mainColor);
+        updateSwatchesActive("orig-color-swatches", settings.origColor);
+        el.settingsDialog.classList.add("open");
+      }
+
+      function closeSettingsDialog() {
+        el.settingsDialog.classList.remove("open");
+        // Restore current settings in preview
+        applySettings();
+      }
+
+      function updateSwatchesActive(containerId, color) {
+        document.querySelectorAll(`#${containerId} .swatch`).forEach((s) => {
+          s.classList.toggle("active", s.dataset.color === color);
+        });
+      }
+
+      el.settingsBtn.addEventListener("click", openSettingsDialog);
+      el.dialogClose.addEventListener("click", closeSettingsDialog);
+      el.dialogCancel.addEventListener("click", closeSettingsDialog);
+
+      el.settingsDialog.addEventListener("click", (e) => {
+        if (e.target === el.settingsDialog) closeSettingsDialog();
+      });
+
+      el.fontSizeRange.addEventListener("input", () => {
+        const v = parseFloat(el.fontSizeRange.value);
+        el.fontSizeLabel.textContent = v.toFixed(1) + "rem";
+        pendingSettings.fontSize = v;
+        document.documentElement.style.setProperty(
+          "--sub-font-size",
+          v + "rem",
+        );
+      });
+
+      // Main color swatches
+      document
+        .getElementById("main-color-swatches")
+        .addEventListener("click", (e) => {
+          const swatch = e.target.closest(".swatch");
+          if (!swatch) return;
+          pendingSettings.mainColor = swatch.dataset.color;
+          updateSwatchesActive("main-color-swatches", swatch.dataset.color);
+          document.documentElement.style.setProperty(
+            "--sub-color",
+            swatch.dataset.color,
+          );
+          el.mainColorCustom.value = swatch.dataset.color;
+        });
+
+      el.mainColorCustom.addEventListener("input", () => {
+        pendingSettings.mainColor = el.mainColorCustom.value;
+        updateSwatchesActive("main-color-swatches", "");
+        document.documentElement.style.setProperty(
+          "--sub-color",
+          el.mainColorCustom.value,
+        );
+      });
+
+      // Orig color swatches
+      document
+        .getElementById("orig-color-swatches")
+        .addEventListener("click", (e) => {
+          const swatch = e.target.closest(".swatch");
+          if (!swatch) return;
+          pendingSettings.origColor = swatch.dataset.color;
+          updateSwatchesActive("orig-color-swatches", swatch.dataset.color);
+          document.documentElement.style.setProperty(
+            "--sub-orig-color",
+            swatch.dataset.color,
+          );
+          el.origColorCustom.value = swatch.dataset.color;
+        });
+
+      el.origColorCustom.addEventListener("input", () => {
+        pendingSettings.origColor = el.origColorCustom.value;
+        updateSwatchesActive("orig-color-swatches", "");
+        document.documentElement.style.setProperty(
+          "--sub-orig-color",
+          el.origColorCustom.value,
+        );
+      });
+
+      el.dialogSave.addEventListener("click", () => {
+        settings = { ...pendingSettings };
+        saveSettings();
+        el.settingsDialog.classList.remove("open");
+      });
+
+      // ============================================================================
+      // INIT
+      // ============================================================================
+
+      loadSettings();
+
+      window.addEventListener("beforeunload", () => {
+        disconnect();
+      });
+    </script>
+  </body>
 </html>

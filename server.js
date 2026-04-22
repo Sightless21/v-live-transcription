@@ -16,6 +16,7 @@ const { createServer } = require('http');
 const cors = require('cors');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const OpenAI = require('openai');
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
@@ -31,10 +32,17 @@ if (!process.env.DEEPGRAM_API_KEY) {
 // Configuration
 const CONFIG = {
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  openaiApiKey: process.env.OPENAI_API_KEY,
   deepgramSttUrl: 'wss://api.deepgram.com/v1/listen',
   port: process.env.PORT || 8081,
   host: process.env.HOST || '0.0.0.0',
 };
+
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: CONFIG.openaiApiKey,
+});
 
 // ============================================================================
 // SESSION AUTH - JWT tokens for production security
@@ -120,6 +128,37 @@ app.get('/api/metadata', (req, res) => {
     res.status(500).json({
       error: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to read metadata from deepgram.toml'
+    });
+  }
+});
+
+/**
+ * OpenAI Chat Completion API
+ * POST /api/openai/chat
+ */
+app.post('/api/openai/chat', async (req, res) => {
+  try {
+    const { messages, model = 'gpt-3.5-turbo', ...options } = req.body;
+    
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({
+        error: 'BAD_REQUEST',
+        message: 'messages array is required'
+      });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages,
+      ...options
+    });
+
+    res.json(completion);
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    res.status(500).json({
+      error: 'OPENAI_ERROR',
+      message: error.message
     });
   }
 });

@@ -11,6 +11,35 @@
 const SESSION_ENDPOINT = 'api/session';
 let sessionToken = null;
 
+// ============================================================================
+// OPENAI API
+// ============================================================================
+
+async function callOpenAI(messages, model = 'gpt-3.5-turbo') {
+  try {
+    const response = await fetch('http://localhost:8081/api/openai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages,
+        model
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('OpenAI API call failed:', error);
+    throw error;
+  }
+}
+
 async function getSessionToken() {
   if (sessionToken) return sessionToken;
   const response = await fetch(SESSION_ENDPOINT);
@@ -526,7 +555,68 @@ function showError(message) {
 }
 
 // ============================================================================
+// OPENAI CHAT FUNCTIONALITY
+// ============================================================================
+
+async function handleOpenAISend() {
+  const input = document.getElementById('openai-input');
+  const responseDiv = document.getElementById('openai-response');
+  const sendBtn = document.getElementById('openai-send-btn');
+  
+  const message = input.value.trim();
+  if (!message) return;
+  
+  // Get current transcript context if available
+  const transcriptItems = document.querySelectorAll('.transcript-item__text');
+  let context = '';
+  if (transcriptItems.length > 0) {
+    const recentTranscripts = Array.from(transcriptItems).slice(-3).map(el => el.textContent).join('\n');
+    context = `Recent transcription:\n${recentTranscripts}\n\n`;
+  }
+  
+  // Show loading state
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+  responseDiv.style.display = 'block';
+  responseDiv.textContent = 'Thinking...';
+  
+  try {
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are an AI assistant helping with live transcription. Be helpful and concise.'
+      },
+      {
+        role: 'user',
+        content: context + message
+      }
+    ];
+    
+    const response = await callOpenAI(messages);
+    responseDiv.textContent = response;
+    input.value = '';
+  } catch (error) {
+    responseDiv.textContent = `Error: ${error.message}`;
+    responseDiv.style.borderColor = 'var(--danger)';
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send to AI';
+  }
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
+
+// Add OpenAI event listener
+document.getElementById('openai-send-btn')?.addEventListener('click', handleOpenAISend);
+
+// Also allow Enter key to send (Shift+Enter for new line)
+document.getElementById('openai-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleOpenAISend();
+  }
+});
 
 console.log('Live Transcription frontend initialized');
