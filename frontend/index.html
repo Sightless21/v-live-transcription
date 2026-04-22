@@ -1629,8 +1629,8 @@
 
           // Translate
           try {
-            // const translated = await mockTranslate(text, targetLang);
-            const translated = await callOpenAI(text, targetLang);
+            const translated = await mockTranslate(text, targetLang);
+            // const translated = await callOpenAI(text, targetLang);
             state.stats.translations++;
             el.translationCount.textContent = state.stats.translations;
             showSubtitle(text, translated, false);
