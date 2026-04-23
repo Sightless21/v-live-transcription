@@ -181,15 +181,21 @@ wss.on('connection', async (clientWs, request) => {
   const channels = url.searchParams.get('channels') || '1';
 
   // Build Deepgram WebSocket URL with query parameters
+  const isAutoDetect = language === 'auto';
   const deepgramUrl = new URL(CONFIG.deepgramSttUrl);
   deepgramUrl.searchParams.set('model', model);
-  deepgramUrl.searchParams.set('language', language);
+  if (isAutoDetect) {
+    // detect_language=true lets Deepgram handle code-switching / multilingual speakers
+    deepgramUrl.searchParams.set('detect_language', 'true');
+  } else {
+    deepgramUrl.searchParams.set('language', language);
+  }
   deepgramUrl.searchParams.set('smart_format', smart_format);
   deepgramUrl.searchParams.set('encoding', encoding);
   deepgramUrl.searchParams.set('sample_rate', sample_rate);
   deepgramUrl.searchParams.set('channels', channels);
 
-  console.log(`Connecting to Deepgram STT: model=${model}, language=${language}, encoding=${encoding}, sample_rate=${sample_rate}, channels=${channels}`);
+  console.log(`Connecting to Deepgram STT: model=${model}, language=${isAutoDetect ? 'auto-detect' : language}, encoding=${encoding}, sample_rate=${sample_rate}, channels=${channels}`);
 
   // Create WebSocket connection to Deepgram
   const deepgramWs = new WebSocket(deepgramUrl.toString(), {
